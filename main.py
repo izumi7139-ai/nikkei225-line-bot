@@ -12,7 +12,7 @@ from datetime import datetime
 
 SEND_LINE = True
 LINE_SEND_MODE = "broadcast"
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("NpKOKCACNv/kV1a3zE+KX4j1PpVq2kEMlzBrnfUq4tqS9uAYsWs+KL/dzHYWUVNMX5QHmAml7eoGX7xzXG9Bxmjcb8plQJ8drRR3IhtK0jxZSspn0Sf4CNk3mWe0OJ/hjB8m81HSUo8YVdNss39mqgdB04t89/1O/w1cDnyilFU=", "")
 
 fallback_nikkei225_codes = [
     "1332","1605","1721","1801","1802","1803","1808","1812","1925","1928",
