@@ -10,7 +10,7 @@ from ta.momentum import RSIIndicator
 from datetime import datetime
 
 
-SEND_LINE = True
+SEND_LINE = False
 LINE_SEND_MODE = "broadcast"
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("NpKOKCACNv/kV1a3zE+KX4j1PpVq2kEMlzBrnfUq4tqS9uAYsWs+KL/dzHYWUVNMX5QHmAml7eoGX7xzXG9Bxmjcb8plQJ8drRR3IhtK0jxZSspn0Sf4CNk3mWe0OJ/hjB8m81HSUo8YVdNss39mqgdB04t89/1O/w1cDnyilFU=", "")
 
