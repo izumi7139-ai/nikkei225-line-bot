@@ -1,4 +1,4 @@
-name: Nikkei225 Two Step LINE Notify
+name: Market Radar Core LINE Notify
 
 on:
   schedule:
@@ -12,11 +12,8 @@ on:
         default: "MORNING"
 
 jobs:
-  morning:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 22 * * *'
+  market-radar:
     runs-on: ubuntu-latest
-    env:
-      NOTIFY_MODE: ${{ github.event.inputs.notify_mode || 'MORNING' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,27 +24,8 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - run: python main.py
+      - name: Run Market Radar
+        run: python main.py
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          NOTIFY_MODE: ${{ env.NOTIFY_MODE }}
-
-  preopen:
-    if: github.event.schedule == '55 23 * * *'
-    runs-on: ubuntu-latest
-    env:
-      NOTIFY_MODE: PREOPEN
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - run: pip install -r requirements.txt
-
-      - run: python main.py
-        env:
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          NOTIFY_MODE: PREOPEN
+          NOTIFY_MODE: ${{ github.event.inputs.notify_mode || (github.event.schedule == '55 23 * * *' && 'PREOPEN') || 'MORNING' }}
