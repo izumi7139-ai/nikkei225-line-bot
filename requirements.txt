@@ -1,9 +1,9 @@
-yfinance
-pandas
-numpy
-ta
 requests
-beautifulsoup4
+numpy
+pandas
+yfinance
+openpyxl
+xlrd
 lxml
 html5lib
-openpyxl
+beautifulsoup4
