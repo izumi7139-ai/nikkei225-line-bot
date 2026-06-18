@@ -30,10 +30,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(HISTORY_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-JPX_LISTED_COMPANY_XLS = (
-    "https://www.jpx.co.jp/markets/statistics-equities/misc/"
-    "tvdivq0000001vg2-att/data_j.xls"
-)
+JPX_LISTED_COMPANY_XLS = "https://www.jpx.co.jp/markets/statistics-equities/misc/tvdivq0000001vg2-att/data_j.xls"
+
 
 BENCHMARK_TICKER = "^N225"
 YF_CHUNK_SIZE = 80
@@ -107,6 +105,89 @@ def is_stock_code(code):
 
 
 def get_prime_universe_from_jpx():
+    print("JPXから東証プライム銘柄リストを取得します。")
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 MarketRadar/1.0"
+    }
+
+    r = requests.get(JPX_LISTED_COMPANY_XLS, headers=headers, timeout=30)
+    r.raise_for_status()
+
+    tmp_file = "jpx_listed_company.xls"
+    with open(tmp_file, "wb") as f:
+        f.write(r.content)
+
+    df = pd.read_excel(tmp_file, dtype=str)
+
+    print("JPX列名:", list(df.columns))
+    print("JPX先頭5行:")
+    print(df.head().to_string())
+
+    code_col = None
+    name_col = None
+    market_col = None
+    industry_col = None
+
+    for col in df.columns:
+        c = str(col).strip()
+
+        if c in ["コード", "コード番号", "銘柄コード"]:
+            code_col = col
+
+        if c in ["銘柄名", "会社名", "名称"]:
+            name_col = col
+
+        if "市場" in c and ("区分" in c or "商品" in c):
+            market_col = col
+
+        if "33業種" in c:
+            industry_col = col
+
+    if code_col is None:
+        raise Exception(f"コード列を認識できません。列名={list(df.columns)}")
+
+    if name_col is None:
+        raise Exception(f"銘柄名列を認識できません。列名={list(df.columns)}")
+
+    if market_col is None:
+        raise Exception(f"市場区分列を認識できません。列名={list(df.columns)}")
+
+    print("コード列:", code_col)
+    print("銘柄名列:", name_col)
+    print("市場列:", market_col)
+    print("業種列:", industry_col)
+
+    print("市場区分の種類:")
+    print(df[market_col].dropna().astype(str).value_counts().head(30).to_string())
+
+    market_text = df[market_col].astype(str)
+
+    prime = df[
+        market_text.str.contains("プライム", na=False)
+        | market_text.str.contains("Prime", case=False, na=False)
+    ].copy()
+
+    prime["コード"] = prime[code_col].apply(normalize_code)
+    prime["銘柄名"] = prime[name_col].astype(str)
+
+    if industry_col is not None:
+        prime["業種"] = prime[industry_col].astype(str)
+    else:
+        prime["業種"] = ""
+
+    prime = prime[prime["コード"].apply(is_stock_code)]
+    prime = prime[["コード", "銘柄名", "業種"]].drop_duplicates("コード")
+
+    if len(prime) < 1000:
+        raise Exception(
+            f"プライム銘柄数が少なすぎます：{len(prime)}\n"
+            f"市場列={market_col}\n"
+            f"市場区分サンプル={df[market_col].dropna().astype(str).unique()[:20]}"
+        )
+
+    print(f"東証プライム銘柄数：{len(prime)}")
+    return prime.reset_index(drop=True)
     print("JPXから東証プライム銘柄リストを取得します。")
 
     df = pd.read_excel(JPX_LISTED_COMPANY_XLS)
