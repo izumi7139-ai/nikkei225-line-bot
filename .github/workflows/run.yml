@@ -1,32 +1,29 @@
-
-name: Market Radar Core LINE Notify
+name: Daily Nikkei225 Ver6
 
 on:
   schedule:
-    - cron: "30 22 * * *"   # 日本時間 7:30
-    - cron: "55 23 * * *"   # 日本時間 8:55
+    - cron: "30 22 * * *"  # 日本時間 7:30
   workflow_dispatch:
-    inputs:
-      notify_mode:
-        description: "MORNING or PREOPEN"
-        required: true
-        default: "MORNING"
 
 jobs:
-  market-radar:
+  run:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
+      - name: Install packages
+        run: pip install -r requirements.txt
 
-      - name: Run Market Radar
-        run: python main.py
+      - name: Run analysis
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          NOTIFY_MODE: ${{ github.event.inputs.notify_mode || (github.event.schedule == '55 23 * * *' && 'PREOPEN') || 'MORNING' }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          LINE_SEND_MODE: broadcast
+        run: python main.py
