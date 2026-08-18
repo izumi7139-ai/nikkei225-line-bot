@@ -269,26 +269,96 @@ def performance_summary(outcomes):
             rows.append({'month':month,'strategy':strategy,'signals':len(s),'win_rate_10d_pct':round((r>0).mean()*100,1),'mean_return_10d_pct':round(r.mean(),2),'median_return_10d_pct':round(r.median(),2),'mean_mae_10d_pct':round(mae.mean(),2),'mean_mfe_10d_pct':round(mfe.mean(),2)})
     return pd.DataFrame(rows)
 
+def phase_label(phase):
+    labels={
+        'ACCELERATION':'上昇加速中',
+        'NEW':'新規シグナル',
+        'HOLD':'保有継続',
+        'MATURE':'上昇後半・高値注意',
+        'RE-ENTRY':'押し目から再上昇',
+        'DATA_INSUFFICIENT':'データ不足'
+    }
+    return labels.get(str(phase), str(phase))
+
+def action_label(action):
+    labels={
+        'ENTRY':'新規買い候補',
+        'WATCH':'監視',
+        'HOLD':'保有継続',
+        'SKIP':'新規見送り'
+    }
+    return labels.get(str(action), str(action))
+
 def build_ver7_message(ranking,date):
-    entry=ranking[ranking['Action']=='ENTRY'].copy(); watch=ranking[ranking['Action']=='WATCH'].copy(); hold=ranking[ranking['Action']=='HOLD'].copy()
-    if not entry.empty: entry['SortKey']=entry.apply(sort_key,axis=1); entry=entry.sort_values(['SortKey','総合点'],ascending=[False,False]).head(MAX_ENTRY_NOTIFY)
-    if not watch.empty: watch['P']=watch['Phase'].map({'NEW':2,'RE-ENTRY':1}).fillna(0); watch=watch.sort_values(['P','総合点'],ascending=[False,False]).head(MAX_WATCH_NOTIFY)
-    if not hold.empty: hold=hold.sort_values('総合点',ascending=False).head(MAX_HOLD_NOTIFY)
-    msg=f"🚀【日本株 Entry Radar Ver7.0】\n{date.strftime('%Y-%m-%d')}\n\n"
-    if entry.empty: msg+='【新規ENTRY】\n本日の新規ENTRY候補はありません。\n\n'
-    else:
-        msg+=f'【新規ENTRY：{len(entry)}銘柄】\n\n'
-        for i,(_,r) in enumerate(entry.iterrows(),1):
-            msg+=f"{i}. {r['銘柄名']}（{r['コード']}）\nPhase：🚀 {r['Phase']}\nVer6：{r['判定']} / {r['総合点']}点\n5D：{fmt(r['5日%'],1,'%')} / 20D：{fmt(r['20日%'],1,'%')}\nAccel：{fmt(r['MomentumAcceleration%'],1,'%')} / 25MA：{fmt(r['25日乖離%'],1,'%')}\nSignal Age：{fmt(r['SignalAge'],0)} / 初回比：{fmt(r['FirstSignalReturn%'],1,'%')}\n買いゾーン：{fmt(r['買いゾーン下限'],0)}〜{fmt(r['買いゾーン上限'],0)}円\nATR Stop：{fmt(r['ATR損切り'],0)}円 / Swing Stop：{fmt(r['Swing損切り'],0)}円\n\n"
+    entry=ranking[ranking['Action']=='ENTRY'].copy()
+    watch=ranking[ranking['Action']=='WATCH'].copy()
+    hold=ranking[ranking['Action']=='HOLD'].copy()
+
+    if not entry.empty:
+        entry['SortKey']=entry.apply(sort_key,axis=1)
+        entry=entry.sort_values(['SortKey','総合点'],ascending=[False,False]).head(MAX_ENTRY_NOTIFY)
+
     if not watch.empty:
-        msg+='👀【WATCH】\n'
-        for _,r in watch.iterrows(): msg+=f"{r['銘柄名']}（{r['コード']}）｜{r['Phase']}｜{r['総合点']}点\n"
-        msg+='\n'
+        watch['P']=watch['Phase'].map({'NEW':2,'RE-ENTRY':1}).fillna(0)
+        watch=watch.sort_values(['P','総合点'],ascending=[False,False]).head(MAX_WATCH_NOTIFY)
+
     if not hold.empty:
-        msg+='🔵【HOLD】\n'
-        for _,r in hold.iterrows(): msg+=f"{r['銘柄名']}（{r['コード']}）｜初回比 {fmt(r['FirstSignalReturn%'],1,'%')}\n"
+        hold=hold.sort_values('総合点',ascending=False).head(MAX_HOLD_NOTIFY)
+
+    msg=f"🚀【日本株 買いタイミング速報 Ver7.0】\n{date.strftime('%Y-%m-%d')}\n\n"
+
+    if entry.empty:
+        msg+='【今日の新規買い候補】\n本日は新規買い候補がありません。\n\n'
+    else:
+        msg+=f'【今日の新規買い候補：{len(entry)}銘柄】\n\n'
+        for i,(_,r) in enumerate(entry.iterrows(),1):
+            msg+=f"{i}位 {r['銘柄名']}（{r['コード']}）\n"
+            msg+=f"判定：🚀 {phase_label(r['Phase'])}\n"
+            msg+=f"Ver6評価：{r['判定']} / {r['総合点']}点\n"
+            msg+=f"直近5日：{fmt(r['5日%'],1,'%')}\n"
+            msg+=f"直近20日：{fmt(r['20日%'],1,'%')}\n"
+            msg+=f"上昇の加速度：{fmt(r['MomentumAcceleration%'],1,'%')}\n"
+            msg+=f"25日移動平均線からの乖離：{fmt(r['25日乖離%'],1,'%')}\n"
+
+            age=r.get('SignalAge',np.nan)
+            if pd.isna(age):
+                msg+='シグナル発生：-\n'
+            elif float(age)==0:
+                msg+='シグナル発生：本日\n'
+            else:
+                msg+=f"シグナル発生から：{fmt(age,0)}営業日\n"
+
+            msg+=f"初回通知からの上昇率：{fmt(r['FirstSignalReturn%'],1,'%')}\n"
+            msg+=f"買い目安：{fmt(r['買いゾーン下限'],0)}〜{fmt(r['買いゾーン上限'],0)}円\n"
+            msg+=f"値動き基準の損切り目安：{fmt(r['ATR損切り'],0)}円\n"
+            msg+=f"直近安値基準の損切り目安：{fmt(r['Swing損切り'],0)}円\n\n"
+
+    if not watch.empty:
+        msg+='👀【監視銘柄】\n'
+        for _,r in watch.iterrows():
+            explanation='良い銘柄ですが、まだ買いタイミング待ち'
+            if r['Phase']=='RE-ENTRY':
+                explanation='押し目から再上昇の兆し。もう少し確認'
+            msg+=f"・{r['銘柄名']}（{r['コード']}）\n"
+            msg+=f"  → {phase_label(r['Phase'])}：{explanation}\n"
         msg+='\n'
-    return msg+'※Ver7.0は検証運用中。投資判断は自己責任でお願いします。'
+
+    if not hold.empty:
+        msg+='🔵【保有継続候補】\n'
+        for _,r in hold.iterrows():
+            msg+=f"・{r['銘柄名']}（{r['コード']}）｜初回比 {fmt(r['FirstSignalReturn%'],1,'%')}\n"
+        msg+='\n'
+
+    # 初めて使う人向けの用語説明
+    msg+='📖【用語説明】\n'
+    msg+='■ 上昇の加速度とは？\n'
+    msg+='「最近5日間の上昇ペース」が「直近20日間の平均的な上昇ペース」と比べて、どれだけ強まっているかを表すVer7独自の指標です。\n'
+    msg+='プラスが大きいほど、最近になって株価の上昇に勢いがついている状態です。\n'
+    msg+='計算：直近5日騰落率 −（直近20日騰落率 ÷ 4）\n'
+    msg+='例：5日 +4.1% / 20日 +2.7% → 4.1 − 0.7 ≒ +3.4%\n'
+    msg+='※上昇の加速度が高くても、将来の株価上昇を保証するものではありません。\n\n'
+    msg+='※Ver7.0は検証運用中です。最終的な投資判断はご自身で行ってください。'
+    return msg
 
 def build_ver6_fallback(ranking,date):
     msg=f"【中長期有望銘柄 Ver6 / Ver7フォールバック】\n{date.strftime('%Y-%m-%d')}\n\n"
