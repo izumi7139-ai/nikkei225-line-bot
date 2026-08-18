@@ -31,7 +31,7 @@ jobs:
           LINE_SEND_MODE: "broadcast"
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
-        run: python nikkei225_ver7.py
+        run: python main.py
 
       - name: Commit research data
         run: |
