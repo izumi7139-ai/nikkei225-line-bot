@@ -1,0 +1,3 @@
+﻿month,strategy,signals,win_rate_10d_pct,mean_return_10d_pct,median_return_10d_pct,mean_mae_10d_pct,mean_mfe_10d_pct
+2026-08,Ver6_TOP5,9,88.9,4.41,5.39,-2.93,6.02
+2026-08,Ver7_ENTRY,10,90.0,4.19,3.68,-4.4,5.21
